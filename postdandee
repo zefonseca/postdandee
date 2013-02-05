@@ -1,0 +1,289 @@
+#!/usr/bin/perl -w
+
+use strict;
+
+=begin
+
+postdandee - Postfix log analyzer, dictionary attack shield
+Copyright (C) 2005-2013 Jose Fonseca (jfonseca@zefonseca.com)
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+postdandee v. 0.0.3
+
+Author: Jose Fonseca (jfonseca@zefonseca.com)
+WWW: http://zefonseca.com/
+
+The 'postdandee' daemon script periodically parses the `tail -n $NUMROWS` of 
+$LOGFILE and checks for rejected messages caused by trying an invalid recipient. 
+
+It will block the rejected MX for $JAILTIME minutes through $BLOCKHOSTCOMMAND
+
+Very basic, meant for Postfix only. I have no plans to expand it for Exim or
+Sendmail but you may adapt the idea for any maillog format.
+
+Add it to /etc/rc.local or equivalent.
+
+For a test run use the -d 1 switch (debug).
+
+Usage ./postdandee
+
+or  ./postdandee -d 1  (for a test run, will not detach, verbose mode)
+
+Signals INT, TERM and HUP cause a cleanup routine to be called releasing all
+blocked routes.
+
+=cut
+
+# ---------- MAIN CONFIGURATION --------------------------------------
+
+# $LOGFILE :
+# postfix maillog file, the default normally works.
+my $LOGFILE 		= "/var/log/maillog";
+my $CONFIGFILE		= "/etc/postdandee.conf";
+
+# $NUMROWS : 
+# how many rows to check from the bottom of $LOG_FILE
+# this, combined with $POLLINGTIMEOUT, determines how
+# intensively postdandee will check your log for potential abuse
+# if you set this too high and $POLLINGTIMEOUT too low it will
+# only waste system clocks going over the same log lines
+#
+# NOTE: if your system runs on little memory you may want to reduce this,
+#       even if some spammers might get by the filter.
+#
+my $NUMROWS = 100;
+
+# $POLLINGTIMEOUT :
+# timeout, in seconds, before next log check
+# too large a timeout may allow holes in the log where spammers get by unseen
+# too small timeouts creates unnecessary server load
+# adjust according to your traffic level
+my $POLLINGTIMEOUT = 10;
+
+# $JAILTIME :
+# number of seconds to block the offending host
+# default is 30 minutes
+# too high a value will probably block legit MX's being exploited by scumbags
+# many italian ISP's for instance allow their broadband users to send unlimited mail
+# which makes them quite attractive for spammers. same in Brasil ADSL providers.
+my $JAILTIME = 30 * 60;
+
+# $BLOCKHOSTCOMMAND :
+# and
+# $RELEASEHOSTCOMMAND :
+# the command you'd like to use against $offendingHost
+# we strongly reccommend AGAINST you contacting the offending host in any way
+# blocking the route is the most secure and elegant way to deal with it
+# use single quotes. this will be eval'd later so $OFFENDING_HOST must 
+# not be interpolated now.
+my $BLOCKHOSTCOMMAND 	= '/sbin/route add $offendingHost reject 2>\&1 > /dev/null';
+my $RELEASEHOSTCOMMAND 	= '/sbin/route del $offendingHost reject 2>\&1 > /dev/null';
+
+
+# $ROUTECHECKCOMMAND :
+# the command you'd like to use when checking for existing routes
+# postdandee will not try to add a route over an existing one
+my $ROUTECHECKCOMMAND 	= '/sbin/route -n';
+
+
+# ---------- END CONFIGURATION --------------------------------------
+
+use Getopt::Std;
+use POSIX;
+
+# GLOBALS
+my %globalHostsCurrentlyBlocked;
+my %globalExclusions;
+my $exitFlag = 0;
+our($opt_d,$opt_n);
+getopt("dn");
+
+# keep strict pragma happy
+$opt_d = 0 unless(defined $opt_d); 
+
+# MAIN PROGRAM
+mainLoop(int($opt_d));
+
+
+
+
+
+
+
+
+
+# ------- DO NOT CHANGE BELOW THIS LINE unless(YOU KNOW WHAT YOU'RE DOING);
+
+
+# your crime is time!
+# adds rejected route to system tables
+# adds timestamp entry to global hash
+sub sendToSlammer{
+   my($offendingHost) = @_;   
+   my $cmdString;
+   my %existingRoutes = getExistingRoutes();   
+   
+   unless($globalHostsCurrentlyBlocked{$offendingHost} 
+          and 
+          $existingRoutes{$offendingHost}){
+     eval "\$cmdString = \"$BLOCKHOSTCOMMAND\";";         
+     system("$cmdString");
+   }
+   
+   $globalHostsCurrentlyBlocked{$offendingHost} = time();
+}
+
+
+# clears offendingHost from global hash of bad guys
+# releases the rejected route to offendingHost
+sub releaseCrook{
+   my($offendingHost) = @_;   
+   my $cmdString;
+   my %existingRoutes = getExistingRoutes();
+   
+   
+   if($globalHostsCurrentlyBlocked{$offendingHost} 
+       or 
+       $existingRoutes{$offendingHost}){
+     eval "\$cmdString = \"$RELEASEHOSTCOMMAND\";";  
+     system("$cmdString");
+     delete($globalHostsCurrentlyBlocked{$offendingHost});
+   }  
+   
+}
+
+
+# retrieves the last offending IP's
+sub getLatestEntries{
+   my $mailTail = `tail -n $NUMROWS $LOGFILE`;
+   my @crooks = ();
+   while($mailTail =~ m{NOQUEUE:\s+reject:\s+RCPT\s+from[^\[]+\[(\d+\.\d+\.\d+\.\d+)]}gms){
+     push @crooks, $1;   
+   }
+   return @crooks;
+}
+
+
+# this will release inmates who dunn their time
+sub checkExpiredJailtimes{   
+   foreach my $offendingHost(keys %globalHostsCurrentlyBlocked){
+      my $offenseTime = $globalHostsCurrentlyBlocked{$offendingHost};
+      if((time() - $offenseTime) > $JAILTIME){
+         releaseCrook($offendingHost);
+      }
+   }
+   
+}
+
+
+# cleanup. clears what we've done to the
+# routing tables before exiting.
+# good for the INT signal handler
+sub cleanup{
+   # clear all we've done to the routing table
+   foreach my $offendingHost(keys %globalHostsCurrentlyBlocked){
+         releaseCrook($offendingHost);
+   }
+   exit();
+}
+
+sub getExistingRoutes{
+    my %existingRoutes = ();
+    open(ROUTES,"$ROUTECHECKCOMMAND |");   
+    while(<ROUTES>){
+      if(m{(\d+\.\d+\.\d+\.\d+)\s+}){
+        $existingRoutes{$1}++;
+      }
+    }
+    return %existingRoutes;
+}
+
+sub getGlobalExclusions{
+	open(FXL,"$CONFIGFILE");
+	while(<FXL>){
+		chomp;
+		if(m{^ExcludeHost: (.+?)$}gmsi){
+			my $excludedHost = $1;
+			$globalExclusions{$excludedHost}++;
+		}
+	}
+}
+
+# 2006-01-01 JMAF working on new years...
+# boolean isExcluded - case positive, do not send to slammer
+sub isExcluded{
+	my $host = shift;
+	foreach my $regexp(keys %globalExclusions){
+		if($host =~ m{$regexp}){
+			return 1;
+		}
+	}
+	return 0;
+}
+
+# where it all happens
+# time after time, all over again, in circles
+sub mainLoop{
+   my($debugSwitch) = @_;   
+   $debugSwitch = 0 unless(defined $debugSwitch); # satisfy strict pragma
+
+  # go into daemon mode unless $debugSwitch
+  # Perl Cookbook 1st Ed. Recipe 17.15
+  unless($debugSwitch > 0){
+     my $pid = fork();
+     exit(0) if($pid);
+     POSIX::setsid() or die "Fatal: unable to start a new session. $!\n";
+  }
+  
+  # hook up signal handlers to cleanup() routine
+  $SIG{INT} = $SIG{TERM} = $SIG{HUP}= \&cleanup;
+  
+  getGlobalExclusions();
+
+  do{
+  
+   # first release some bad guys
+   # release happens before the next round
+   # so they get a chance to try again, and get busted again
+   print localtime() . " Checking expired blocked hosts.\n" if($debugSwitch > 0);
+   checkExpiredJailtimes();
+   
+   # get latest bad guys
+   # if you set timeout too low you'll bust the same guys 
+   # as last time. 
+   # 2 jail terms for the same crime is a no-no!
+   print localtime() . " Getting latest offender list.\n" if($debugSwitch > 0);
+   my @latestOffenders = getLatestEntries();
+   my $_cnt = 0;   
+   foreach my $offendingHost(@latestOffenders){
+       # since 2006-01-01 we now have exclusion lists
+       
+       if(isExcluded($offendingHost)){
+       	print localtime() . " \t - Ignoring $offendingHost - Excluded in $CONFIGFILE\n" if($debugSwitch > 0);   
+       }else {
+       	sendToSlammer($offendingHost);
+       	print localtime() . " \t - Blocking $offendingHost\n" if($debugSwitch > 0);   
+       	$_cnt++;
+       }
+       
+   }
+   print localtime() . " $_cnt IP's blocked.\n" if($debugSwitch > 0);       
+   sleep($POLLINGTIMEOUT);
+   
+  }until($exitFlag);
+}
+
+
