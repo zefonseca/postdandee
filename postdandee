@@ -24,7 +24,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 postdandee v. 0.0.3
 
 Author: Jose Fonseca (jfonseca@zefonseca.com)
-WWW: http://zefonseca.com/
+
+Developed with support from https://www.MercadoViagens.com/
 
 The 'postdandee' daemon script periodically parses the `tail -n $NUMROWS` of 
 $LOGFILE and checks for rejected messages caused by trying an invalid recipient. 

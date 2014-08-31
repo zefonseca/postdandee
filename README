@@ -18,7 +18,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 Version 0.0.3 2006-01-01
-WWW: http://zefonseca.com/
+Developed with support from https://www.MercadoViagens.com/
 
 ABOUT
 -----
@@ -126,5 +126,7 @@ REQUIREMENTS
 LINKS
 -----
 Spamassassin (http://spamassassin.apache.org/) 
+
 Postfix SMTP mail exchanger (http://www.postfix.org/)
-Ze's Web Design Home Page: http://zefonseca.com/
+
+Development supported by https://www.MercadoViagens.com/
