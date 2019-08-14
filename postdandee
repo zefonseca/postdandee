@@ -5,7 +5,7 @@ use strict;
 =begin
 
 postdandee - Postfix log analyzer, dictionary attack shield
-Copyright (C) 2005-2013 Jose Fonseca (jfonseca@zefonseca.com)
+Copyright (C) 2005-2019 Jose Fonseca (https://zefonseca.com/)
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -23,9 +23,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 postdandee v. 0.0.3
 
-Author: Jose Fonseca (jfonseca@zefonseca.com)
-
-Developed with support from https://www.MercadoViagens.com/
+Author: Jose Fonseca (https://zefonseca.com/)
 
 The 'postdandee' daemon script periodically parses the `tail -n $NUMROWS` of 
 $LOGFILE and checks for rejected messages caused by trying an invalid recipient. 

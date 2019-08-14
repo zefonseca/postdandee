@@ -1,7 +1,10 @@
 
 
-postdandee - Postfix log analyzer, dictionary attack shield
-Copyright (C) 2005-2013 Jose Fonseca (jfonseca@zefonseca.com)
+# postdandee 
+
+Postfix log analyzer, dictionary attack shield
+
+Copyright (C) 2005-2019 Jose Fonseca (https://zefonseca.com/)
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -19,13 +22,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 Version 0.0.3 2006-01-01
 
-Development time provided by https://www.MercadoViagens.com/ and https://tics.taxi/
 
-ABOUT
------
+### About
 
 The SPAM business model is based on very low conversion rates applied to a very 
-high number of successfully delivered messages. 
+high number of successfully delivered messages ("high inbox rate"). 
 
 Sysadmins are encouraged to help reduce the number of delivered messages in
 every possible way. 
@@ -64,49 +65,56 @@ It will block the rejected MX for $JAILTIME minutes through $BLOCKHOSTCOMMAND
 It was meant for Postfix only and I have no plans to expand it for Exim or
 Sendmail. postdandee is GPL'd so you may adapt the idea for any maillog format.
 
-Author: Jose Fonseca (jfonseca@zefonseca.com)
 
+### Installation
 
-INSTALLATION
-------------
 postdandee requires no additional libraries or configuration files. copy it
 to your executable bin or an appropriate location
 
 E.g:
-cp postdandee /usr/bin
-chown root /usr/bin/postdandee
-chgrp root /usr/bin/postdandee
-chmod +x /usr/bin/postdandee
+
+    cp postdandee /usr/bin
+    chown root /usr/bin/postdandee
+    chgrp root /usr/bin/postdandee
+    chmod +x /usr/bin/postdandee
 
 
 We reccommend running postdandee as a daemon right from system bootup by 
 adding it to /etc/rc.local or similar startup script.
 
 
-POST-INSTALLATION
------------------
+### Post-Installation
+
 Open the postdandee script on your favorite text editor and set the correct 
 values for your system under the "MAIN CONFIGURATION" section of the script.
 
 
-SECURITY
---------
+### Security
+
 postdandee does not listen on network interfaces, does not accept user input 
 and is written in Perl. There should not be any security holes.
 
 DISCLAIMER: no warranties implied. See licence agreement.
 
 
-USAGE
------
+### Usage
+
 For a test run use the -d switch (debug).       
 
-Usage ./postdandee
-or  ./postdandee -d 1  (for a test run, will not detach, verbose mode)
+Usage: 
+
+    ./postdandee
+    
+or ...
+  
+    ./postdandee -d 1  
+    
+...for a test run. 
+
+With the -d 1 option postdandee will not detach and will run verbose mode.
 
 
-TESTED?
--------
+### Tested?
 
   On: 
 				- linux, Fedora Core 3
@@ -115,8 +123,8 @@ TESTED?
 Should work on any UNIX-like environment.
 
 
-REQUIREMENTS
-------------
+### Requirements
+
 - Perl v. 5.x.x
 - Default route blocking requires linux's route reject feature. 
   (Will require any program you set $BLOCKHOSTCOMMAND & $RELEASEHOSTCOMMAND to.)
@@ -124,10 +132,15 @@ REQUIREMENTS
 - Setting a very low $POLLINGTIMEOUT may increase CPU load unnecessarily.
 
 
-LINKS
------
+### Links
+
 Spamassassin (http://spamassassin.apache.org/) 
 
 Postfix SMTP mail exchanger (http://www.postfix.org/)
 
 Development supported by https://www.MercadoViagens.com/
+
+### Author
+
+Jose Fonseca (https://zefonseca.com/)
+
