@@ -138,8 +138,6 @@ Spamassassin (http://spamassassin.apache.org/)
 
 Postfix SMTP mail exchanger (http://www.postfix.org/)
 
-Development supported by https://www.MercadoViagens.com/
-
 ### Author
 
 Jose Fonseca (https://zefonseca.com/)
